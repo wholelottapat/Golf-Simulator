@@ -19,14 +19,13 @@ enum class hitType {
 };
 
 enum class gameScreen {
-    mainMenu, playing, options
+    mainMenu, holeIntro, playing, options
 };
 
-Color road = { 23, 28, 24 };
-Color rough = { 25, 133, 48 };
-Color fairway = { 38, 189, 70 };
-Color green = { 27, 224, 69 };
-Color fringe = { 29, 153, 55 };
+enum class course {
+	hole1, hole2, hole3, hole4, hole5, hole6, hole7, hole8, hole9
+};
+
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
@@ -40,7 +39,7 @@ int main()
     Rectangle playButton = { 300, 350, 200, 60 };
     Rectangle optionsButton = { 300, 430, 200, 60 };
     Rectangle quitButton = { 300, 510, 200, 60 };
-
+    double introStartTime = 0.0;
 
     // Golf Animation
     Texture2D golfer = LoadTexture("resources/spritesheetGolfer.png");
@@ -70,10 +69,15 @@ int main()
     Vector2 swingDuration = { 28, 0 }; //SWING METER//
 
     //Ball Position
+	course currentHole = course::hole1;
     Vector2 ballPosition = {
         screenWidth / 2,
-        .850*screenHeight
+        .850 * screenHeight
     };
+    if (currentHole == course::hole1) {
+        ballPosition.x = 354;
+        ballPosition.y = 830;
+    }
     // Ball Size
     float ballSize = 2.0;
 
@@ -88,16 +92,27 @@ int main()
     
 
     //Course
-    Texture2D hole1 = LoadTexture("resources/pixel_art_large.png");
-    Texture2D flag = LoadTexture("resources/golfFlag.png");
-
+    float mapScale = 1.814f;
+    Texture2D hole1 = LoadTexture("resources/hole1WilliamsCreek.png");
+    
     Camera2D camera = { 0 };
-    camera.target = { 400, 850 };
-    camera.offset = { 400, 850 };
+    camera.target = { 354, 830 };
+    camera.offset = { screenWidth/2, 800 };
     camera.rotation = 0.0f;
-    camera.zoom = 3.0f;
+    camera.zoom = 2.2f;
     
     int strokeCounter = 1;
+
+    int hole1Dist = 166;
+	int hole2Dist = 255;
+	int hole3Dist = 300;        //Fix this lol//
+	int hole4Dist = 400;
+	int hole5Dist = 500;
+	int hole6Dist = 600;
+	int hole7Dist = 700;
+	int hole8Dist = 800;
+	int hole9Dist = 900;
+
 
     SetTargetFPS(60);
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
@@ -107,9 +122,10 @@ int main()
         Vector2 mousePos = GetMousePosition();
         if (currentScreen == gameScreen::mainMenu) {
             if (CheckCollisionPointRec(mousePos, playButton) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-                currentScreen = gameScreen::playing;
+                currentScreen = gameScreen::holeIntro;
+                introStartTime = GetTime();
             }
-
+			
             if (CheckCollisionPointRec(mousePos, optionsButton) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                 currentScreen = gameScreen::options;
             }
@@ -118,6 +134,9 @@ int main()
                 break;
             }
         }
+        if (currentScreen == gameScreen::holeIntro && GetTime() - introStartTime >= 4.5) {
+            currentScreen = gameScreen::playing;
+        }
 
         if (IsKeyPressed(KEY_ESCAPE) && currentScreen != gameScreen::mainMenu) {
             currentScreen = gameScreen::mainMenu;
@@ -125,7 +144,7 @@ int main()
 
 
         // Golfer Animation
-        float scale = .25f;
+        float scale = mapScale*.1378f;
 
         Rectangle sourceRect = {
             0.0f,
@@ -254,6 +273,7 @@ int main()
         swingMeter.y = Clamp(swingMeter.y, 670.0f, 790.0f);
 
         // Ball Physics
+        
         if (swingState == swingState::Downswing &&
             currentFrame == 28 &&
             !ballFlying) {
@@ -283,14 +303,15 @@ int main()
                 ballPosition.y -= 78.0f * GFT;
             }
         }
+
+		//Camera Mechanics
         if (ballFlying == true) {
             camera.target = ballPosition;
         }
-
-        float mapX = 200.0f;
+        float mapX = 0.0f;
         float mapY = 0.0f;
-        float mapWidth = hole1.width * 0.5f;
-        float mapHeight = hole1.height * 0.5f;
+        float mapWidth = hole1.width * mapScale;
+        float mapHeight = hole1.height * mapScale;
 
         float leftLimit = mapX + camera.offset.x / camera.zoom;
         float rightLimit = mapX + mapWidth -
@@ -305,6 +326,7 @@ int main()
 
 
         const char* hitText = "Idle";
+        
 
         switch (currentHit)
         {
@@ -359,78 +381,80 @@ int main()
             DrawText("OPTIONS", 330, 445, 30, WHITE);
             DrawText("QUIT", 365, 525, 30, WHITE);
         }
+		else if (currentScreen == gameScreen::holeIntro) {
+			ClearBackground(BLACK);
+			if (currentHole == course::hole1) {
+				DrawTextureEx(hole1, { 0, 0 }, 0.0f, mapScale, WHITE);
+				DrawText("HOLE 1", 330, 200, 40, BLACK);
+				DrawText("PAR 3", 330, 250, 30, BLACK);
+				DrawText("YARDS: 166", 300, 300, 30, BLACK);
+			}
+		}
         else if (currentScreen == gameScreen::playing) {
+            if (currentHole == course::hole1) {
+                DrawText("GOLF GAME", 280, 400, 40, WHITE);
+                DrawText("Press ESC for menu", 270, 460, 20, WHITE);
+                //Background + Course
+                BeginMode2D(camera);
 
-            DrawText("GOLF GAME", 280, 400, 40, WHITE);
-            DrawText("Press ESC for menu", 270, 460, 20, WHITE);
-            //Background + Course
-            BeginMode2D(camera);
+                DrawTextureEx(
+                    hole1,
+                    { 0, 0 },
+                    0.0f,
+                    mapScale,
+                    WHITE);
+                // Golfer
+                DrawTexturePro(
+                    golfer,
+                    sourceRect,
+                    destRect,
+                    origin,
+                    90.0f,
+                    WHITE);
 
-            DrawTextureEx(
-                hole1,
-                { 200, 0 },
-                0.0f,
-                0.5f,
-                WHITE);
-            DrawTextureEx(
-                flag,
-                { 400, 100 },
-                0.0f,
-                .25f,
-                WHITE
-            );
-            // Golfer
-            DrawTexturePro(
-                golfer,
-                sourceRect,
-                destRect,
-                origin,
-                90.0f,
-                WHITE);
+                // Golf Ball
+                DrawCircleV(ballPosition, ballSize, WHITE);
 
-            // Golf Ball
-            DrawCircleV(ballPosition, ballSize, WHITE);
+                EndMode2D();
 
-            EndMode2D();
+                //Corner Map
+                DrawTextureEx(hole1, { 670, 50 }, 0, .115f, WHITE);
+                DrawRectangleLinesEx({ 670, 50, 100, 230.92 }, 2, BLACK);
+                DrawText("Hold M for Map", 650, 290, 18, BLACK);
 
-            //Corner Map
-            DrawTextureEx(hole1, { 670, 50 }, 0, .115f, WHITE);
-            DrawRectangleLinesEx({ 670, 50, 100, 230.92 }, 2, BLACK);
-            DrawText("Hold M for Map", 650, 290, 18, BLACK);
+                if (IsKeyDown(KEY_M)) {
+                    ClearBackground(BLACK);
+                    DrawTextureEx(hole1, { 200, 0 }, 0, .5f, WHITE);
+                }
+                else {
+                    // Swing Meter
+                    Rectangle whiteMeter = { 550, 670 };
+                    DrawRectangle(
+                        whiteMeter.x, whiteMeter.y,
+                        28,
+                        120,
+                        WHITE
+                    );
+                    DrawRectangle(
+                        whiteMeter.x, whiteMeter.y + 34.5,
+                        28,
+                        27,
+                        GREEN);
+                    DrawRectangleV(
+                        swingMeter,
+                        swingDuration,
+                        RED);
 
-            if (IsKeyDown(KEY_M)) {
-                ClearBackground(BLACK);
-                DrawTextureEx(hole1, { 200, 0 }, 0, .5f, WHITE);
+
+                    //Text With Time Callouts & Mouse Position
+                    DrawText(TextFormat("%.2f", holdTime), 0.6725 * screenWidth, .583 * screenHeight, 20, WHITE);
+                    DrawText(hitText, .6725 * screenWidth, .62 * screenHeight, 20, WHITE);
+                    DrawText(TextFormat("Mouse X: %.0f | Mouse Y: %.0f", mousePos.x, mousePos.y), 400, 550, 20, WHITE);
+                    DrawText(TextFormat("Stroke: %d", strokeCounter), 400, 530, 20, WHITE);
+                    DrawText(TextFormat("Is flying: %s", ballFlying ? "true" : "false"), 400, 510, 20, WHITE);
+                }
             }
-            else {
-                // Swing Meter
-                Rectangle whiteMeter = { 550, 670 };
-                DrawRectangle(
-                    whiteMeter.x, whiteMeter.y,
-                    28,
-                    120,
-                    WHITE
-                );
-                DrawRectangle(
-                    whiteMeter.x, whiteMeter.y + 34.5,
-                    28,
-                    27,
-                    GREEN);
-                DrawRectangleV(
-                    swingMeter,
-                    swingDuration,
-                    RED);
-
-
-                //Text With Time Callouts & Mouse Position
-                DrawText(TextFormat("%.2f", holdTime), 0.6725 * screenWidth, .583 * screenHeight, 20, WHITE);
-                DrawText(hitText, .6725 * screenWidth, .62 * screenHeight, 20, WHITE);
-                DrawText(TextFormat("Mouse X: %.0f | Mouse Y: %.0f", mousePos.x, mousePos.y), 400, 550, 20, WHITE);
-                DrawText(TextFormat("Stroke: %d", strokeCounter), 400, 530, 20, WHITE);
-                DrawText(TextFormat("Is flying: %s", ballFlying ? "true" : "false"), 400, 510, 20, WHITE);
-            }
-
-
+            
 
             //Course Details
             Rectangle score =
