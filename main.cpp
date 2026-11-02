@@ -79,8 +79,11 @@ int main()
         ballPosition.y = 830;
     }
 
-	Vector2 aimLineStart = { ballPosition.x, ballPosition.y};
-	Vector2 aimLineEnd = { ballPosition.x, ballPosition.y - 100 };
+    float aimAngle = -90.0f;
+	float aimLength = 100.0f;
+	Vector2 aimLineStart = { ballPosition.x, ballPosition.y };
+    Vector2 aimLineEnd = { 0, 0 };
+
     // Ball Size
     float ballSize = 2.0;
 
@@ -306,16 +309,20 @@ int main()
                 ballPosition.y -= 78.0f * GFT;
             }
         }
-
+		
+        // Aim Line Mechanics
         if (IsKeyDown(KEY_D)) {
-            aimLineEnd.x += 5;
-            aimLineEnd.y += 1;
-        }
-        if (IsKeyDown(KEY_A)) {
-            aimLineEnd.x -= 5;
-            aimLineEnd.y += 1;
+            aimAngle += 90.0f * GetFrameTime();
         }
 
+        if (IsKeyDown(KEY_A)) {
+            aimAngle -= 90.0f * GetFrameTime();
+        }
+
+        float radians = aimAngle * DEG2RAD;
+
+        aimLineEnd.x = aimLineStart.x + cosf(radians) * aimLength;
+        aimLineEnd.y = aimLineStart.y + sinf(radians) * aimLength;
 
 		//Camera Mechanics
         if (ballFlying == true) {
