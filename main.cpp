@@ -78,6 +78,9 @@ int main()
         ballPosition.x = 354;
         ballPosition.y = 830;
     }
+
+	Vector2 aimLineStart = { ballPosition.x, ballPosition.y};
+	Vector2 aimLineEnd = { ballPosition.x, ballPosition.y - 100 };
     // Ball Size
     float ballSize = 2.0;
 
@@ -304,6 +307,16 @@ int main()
             }
         }
 
+        if (IsKeyDown(KEY_D)) {
+            aimLineEnd.x += 5;
+            aimLineEnd.y += 1;
+        }
+        if (IsKeyDown(KEY_A)) {
+            aimLineEnd.x -= 5;
+            aimLineEnd.y += 1;
+        }
+
+
 		//Camera Mechanics
         if (ballFlying == true) {
             camera.target = ballPosition;
@@ -414,6 +427,9 @@ int main()
 
                 // Golf Ball
                 DrawCircleV(ballPosition, ballSize, WHITE);
+                
+                //Aim Line
+                DrawLineV(aimLineStart, aimLineEnd, WHITE);
 
                 EndMode2D();
 
