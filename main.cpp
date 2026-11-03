@@ -19,12 +19,32 @@ enum class hitType {
 };
 
 enum class gameScreen {
-    mainMenu, holeIntro, playing, options
+    mainMenu, holeIntro, playing, scoring, options
 };
 
-enum class course {
-	hole1, hole2, hole3, hole4, hole5, hole6, hole7, hole8, hole9
+class golfClub {
+public:
+    float ballSpeedMPH;
+    float carryYards;
+
+	golfClub(float speed, float carry) {
+		ballSpeedMPH = speed;
+		carryYards = carry;
+	}
 };
+
+golfClub driver(215.0f, 135.0f);
+golfClub wood3(195.0f, 125.0f);
+golfClub wood5(180.0f, 118.0f);
+golfClub iron3(170.0f, 112.0f);
+golfClub iron4(160.0f, 108.0f);
+golfClub iron5(150.0f, 103.0f);
+golfClub iron6(140.0f, 98.0f);
+golfClub iron7(130.0f, 93.0f);
+golfClub iron8(120.0f, 87.0f);
+golfClub iron9(110.0f, 81.0f);
+golfClub pitchingWedge(100.0f, 75.0f);
+golfClub sandWedge(70.0f, 60.0f);
 
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
@@ -65,19 +85,22 @@ int main()
         (.6875 * screenWidth), 
         (.916 * screenHeight) 
     };
-
     Vector2 swingDuration = { 28, 0 }; //SWING METER//
 
+
     //Ball Position
-	course currentHole = course::hole1;
+    int holeNum = 1;
+	Clamp(holeNum, 1, 9);
     Vector2 ballPosition = {
         screenWidth / 2,
         .850 * screenHeight
     };
-    if (currentHole == course::hole1) {
+    if (holeNum == 1) {
         ballPosition.x = 354;
         ballPosition.y = 830;
     }
+    Vector2 ballDirection = { 0, -1 };
+    float ballSpeed = 78.0f;
 
     float aimAngle = -90.0f;
 	float aimLength = 100.0f;
@@ -95,7 +118,6 @@ int main()
 
     hitType currentHit = hitType::Idle;
 
-    
 
     //Course
     float mapScale = 1.814f;
@@ -118,6 +140,9 @@ int main()
 	int hole7Dist = 700;
 	int hole8Dist = 800;
 	int hole9Dist = 900;
+
+	Vector2 hole1Pin = { 343, 109 };
+
 
 
     SetTargetFPS(60);
@@ -148,6 +173,17 @@ int main()
             currentScreen = gameScreen::mainMenu;
         }
 
+        //Scoring Mechanics
+        if (currentScreen == gameScreen::playing) {
+            if (holeNum == 1 && CheckCollisionCircles(ballPosition, ballSize, hole1Pin, 5.0f)) {
+				currentScreen = gameScreen::scoring;
+				introStartTime = GetTime();
+            }
+        }
+        if (currentScreen == gameScreen::scoring && GetTime() - introStartTime >= 4.5) {
+            currentScreen = gameScreen::playing;
+            holeNum++;
+        }
 
         // Golfer Animation
         float scale = mapScale*.1378f;
@@ -278,36 +314,48 @@ int main()
         swingDuration.y = Clamp(swingDuration.y, 0.0f, 120.0f);
         swingMeter.y = Clamp(swingMeter.y, 670.0f, 790.0f);
 
-        // Ball Physics
-        
+        // Ball Physics + Club Selection Stuff
+        //Looking at 0.23 yards per pixel//
+
         if (swingState == swingState::Downswing &&
             currentFrame == 28 &&
             !ballFlying) {
             ballFlying = true;
             tf = 0.0f;
+
+			float radians = aimAngle * DEG2RAD;
+
+			ballDirection.x = cosf(radians);
+			ballDirection.y = sinf(radians);
         }
         if (ballFlying == true) {
             tf += GFT;
 
-            if (tf >= 6.0f) {
+            if (tf >= 8.0f) {
                 ballFlying = false;
             }
         }
-        if (ballFlying == true && tf < 6) {
+        if (ballFlying && tf < 8.0f) {
+
+            float strength = 0;
+
             if (currentHit == hitType::Weak) {
-                ballPosition.y -= 50.0f * GFT;
+                strength = .7f;
+            }
+            else if (currentHit == hitType::Pure) {
+                strength = 1.0f;
             }
             else if (currentHit == hitType::Slice) {
-                ballPosition.y -= 70.0f * GFT;
-                ballPosition.x += 35.0f * GFT;
+                strength = .89f;
             }
             else if (currentHit == hitType::Hook) {
-                ballPosition.y -= 70.0f * GFT;
-                ballPosition.x -= 35.0f * GFT;
+                strength = .89f;
             }
-            else {
-                ballPosition.y -= 78.0f * GFT;
-            }
+
+            ballPosition.x += ballDirection.x * strength * GFT;
+            ballPosition.y += ballDirection.y * strength * GFT;
+            
+            //Distance per frame = speed x frametime.
         }
 		
         // Aim Line Mechanics
@@ -323,6 +371,10 @@ int main()
 
         aimLineEnd.x = aimLineStart.x + cosf(radians) * aimLength;
         aimLineEnd.y = aimLineStart.y + sinf(radians) * aimLength;
+
+        if (!ballFlying) {
+            aimLineStart = ballPosition;
+        }
 
 		//Camera Mechanics
         if (ballFlying == true) {
@@ -403,7 +455,7 @@ int main()
         }
 		else if (currentScreen == gameScreen::holeIntro) {
 			ClearBackground(BLACK);
-			if (currentHole == course::hole1) {
+			if (holeNum == 1) {
 				DrawTextureEx(hole1, { 0, 0 }, 0.0f, mapScale, WHITE);
 				DrawText("HOLE 1", 330, 200, 40, BLACK);
 				DrawText("PAR 3", 330, 250, 30, BLACK);
@@ -411,11 +463,11 @@ int main()
 			}
 		}
         else if (currentScreen == gameScreen::playing) {
-            if (currentHole == course::hole1) {
+            if (holeNum == 1) {
                 DrawText("GOLF GAME", 280, 400, 40, WHITE);
                 DrawText("Press ESC for menu", 270, 460, 20, WHITE);
                 //Background + Course
-                BeginMode2D(camera);
+                //BeginMode2D(camera);
 
                 DrawTextureEx(
                     hole1,
@@ -436,9 +488,11 @@ int main()
                 DrawCircleV(ballPosition, ballSize, WHITE);
                 
                 //Aim Line
-                DrawLineV(aimLineStart, aimLineEnd, WHITE);
+                if (!ballFlying) {
+                    DrawLineV(aimLineStart, aimLineEnd, WHITE);
+                }
 
-                EndMode2D();
+                //EndMode2D();
 
                 //Corner Map
                 DrawTextureEx(hole1, { 670, 50 }, 0, .115f, WHITE);
