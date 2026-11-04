@@ -1,4 +1,7 @@
 #include "GameUI.h"
+#include "raylib.h"
+#include "raymath.h"
+#include <cmath>
 
 void DrawMainMenu(Vector2 mousePos,
     Rectangle playButton,
@@ -75,14 +78,9 @@ void DrawGameplay(const GameAssets& assets,
             frameHeight
         };
 
-        Vector2 golferPosition = {
-            ball.position.x - 246.0f,
-            ball.position.y + 9.0f
-        };
-
         Rectangle destRect = {
-            golferPosition.x,
-            golferPosition.y,
+            ball.golferPosition.x,
+            ball.golferPosition.y,
             frameWidth * scale,
             frameHeight * scale
         };

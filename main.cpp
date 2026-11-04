@@ -19,6 +19,9 @@ int main()
     );
 
     SetExitKey(KEY_NULL);
+
+    ChangeDirectory("C:/Users/srsly/Visual Studio Projects/Golf-Simulator");
+
     SetTargetFPS(60);
 
     gameScreen currentScreen = gameScreen::mainMenu;

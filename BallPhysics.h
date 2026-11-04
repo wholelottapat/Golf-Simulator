@@ -5,6 +5,7 @@
 struct BallData {
     Vector2 position = { 354.0f, 830.0f };
     Vector2 direction = { 0.0f, -1.0f };
+    Vector2 golferPosition = { 108.0f, 839.0f };
 
     float size = 2.0f;
     float flightTime = 0.0f;

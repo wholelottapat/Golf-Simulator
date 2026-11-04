@@ -51,12 +51,21 @@ void UpdateBallPhysics(BallData& ball,
         ball.flightTime += deltaTime;
 
         if (ball.flightTime >= 8.0f)
+        {
             ball.flying = false;
+            ball.flightTime = 0.0f;
+
+            ball.golferPosition = {
+                ball.position.x - 246.0f,
+                ball.position.y + 9.0f
+            };
+        }
     }
 
     if (ball.flying && ball.flightTime < 8.0f)
     {
         float strength = 0.0f;
+        float ballSpeed = 150.0f;
 
         if (swing.currentHit == hitType::Weak)
             strength = 0.7f;
@@ -67,11 +76,9 @@ void UpdateBallPhysics(BallData& ball,
         else if (swing.currentHit == hitType::Hook)
             strength = 0.89f;
 
-        ball.position.x +=
-            ball.direction.x * strength * deltaTime;
+        ball.position.x += ball.direction.x * strength * ballSpeed * deltaTime;
 
-        ball.position.y +=
-            ball.direction.y * strength * deltaTime;
+        ball.position.y += ball.direction.y * strength * ballSpeed * deltaTime;
 
         // Distance per frame = speed x frametime.
     }

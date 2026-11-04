@@ -6,18 +6,10 @@ private:
     float carryYards;
 
 public:
-    GolfClub(float speed, float carry) {
-        ballSpeed = speed;
-        carryYards = carry;
-    }
+    GolfClub(float speed, float carry);
 
-    float getBallSpeed() const {
-        return ballSpeed;
-    }
-
-    float getCarryYards() const {
-        return carryYards;
-    }
+    float getBallSpeed() const;
+    float getCarryYards() const;
 };
 
 extern GolfClub driver;
