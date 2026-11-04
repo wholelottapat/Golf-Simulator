@@ -18,7 +18,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(raylib)
 
-add_executable(GolfTest main.cpp)
+add_executable(GolfTest main.cpp "GolfClubs.h" "GolfClubs.cpp" "BallPhysics.h" "BallPhysics.cpp" "Swing.h" "Swing.cpp" "Course.h" "Course.cpp" "GameUI.h" "GameUI.cpp" )
 
 target_link_libraries(GolfTest PRIVATE raylib)
 

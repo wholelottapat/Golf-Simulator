@@ -1,613 +1,205 @@
 #include "raylib.h"
-#include <raymath.h>
-#include <math.h>
+#include "raymath.h"
+
+#include "GolfClubs.h"
+#include "Swing.h"
+#include "BallPhysics.h"
+#include "Course.h"
+#include "GameUI.h"
 
 const int screenWidth = 800;
 const int screenHeight = 1004;
 
-const double minTime = .75;
-const double maxTime = .95;
-
-float rotationSpeed = 90.0f;
-
-enum class swingState {
-    Idle, Backswing, Downswing
-};
-
-enum class hitType {
-    Weak, Slice, Hook, Pure, Idle
-};
-
-enum class gameScreen {
-    mainMenu, holeIntro, playing, scoring, options
-};
-
-class golfClub {
-public:
-    float ballSpeedMPH;
-    float carryYards;
-
-	golfClub(float speed, float carry) {
-		ballSpeedMPH = speed;
-		carryYards = carry;
-	}
-};
-
-golfClub driver(215.0f, 135.0f);
-golfClub wood3(195.0f, 125.0f);
-golfClub wood5(180.0f, 118.0f);
-golfClub iron3(170.0f, 112.0f);
-golfClub iron4(160.0f, 108.0f);
-golfClub iron5(150.0f, 103.0f);
-golfClub iron6(140.0f, 98.0f);
-golfClub iron7(130.0f, 93.0f);
-golfClub iron8(120.0f, 87.0f);
-golfClub iron9(110.0f, 81.0f);
-golfClub pitchingWedge(100.0f, 75.0f);
-golfClub sandWedge(70.0f, 60.0f);
-
-
-//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
-//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
-
 int main()
 {
-    InitWindow(screenWidth, screenHeight, "Golf Simulator - OpenGL 2.1");
+    InitWindow(
+        screenWidth,
+        screenHeight,
+        "Golf Simulator - OpenGL 2.1"
+    );
+
     SetExitKey(KEY_NULL);
+    SetTargetFPS(60);
 
     gameScreen currentScreen = gameScreen::mainMenu;
+
     Rectangle playButton = { 300, 350, 200, 60 };
     Rectangle optionsButton = { 300, 430, 200, 60 };
     Rectangle quitButton = { 300, 510, 200, 60 };
+
     double introStartTime = 0.0;
 
-    // Golf Animation
-    Texture2D golfer = LoadTexture("resources/spritesheetGolfer.png");
+    // Game Data
+    SwingData swing;
+    BallData ball;
+    CourseData course;
 
-    const int framesPerRow = 4;
-    const int totalRows = 9;
-    const int totalFrames = 35;
+    // Game Assets
+    GameAssets assets;
+    assets.golfer =
+        LoadTexture("resources/spritesheetGolfer.png");
 
-    int currentFrame = 0;
+    assets.hole1 =
+        LoadTexture("resources/hole1WilliamsCreek.png");
 
-    float runningTime = 0.0f;
-    float updateTime = 1.0f / 24.0f;
-
-    float frameWidth = (float)golfer.width / framesPerRow;
-    float frameHeight = (float)golfer.height / totalRows;
-
-    swingState swingState = swingState::Idle;
-
-    double startTime = 0.0;
-    double holdTime = 0.0;
-
-    Vector2 swingMeter = {
-        (.6875 * screenWidth), 
-        (.916 * screenHeight) 
-    };
-    Vector2 swingDuration = { 28, 0 }; //SWING METER//
-
-
-    //Ball Position
-    int holeNum = 1;
-	Clamp(holeNum, 1, 9);
-    Vector2 ballPosition = {
-        screenWidth / 2,
-        .850 * screenHeight
-    };
-    if (holeNum == 1) {
-        ballPosition.x = 354;
-        ballPosition.y = 830;
-    }
-    Vector2 ballDirection = { 0, -1 };
-    float ballSpeed = 78.0f;
-
-    float aimAngle = -90.0f;
-	float aimLength = 100.0f;
-	Vector2 aimLineStart = { ballPosition.x, ballPosition.y };
-    Vector2 aimLineEnd = { 0, 0 };
-
-    // Ball Size
-    float ballSize = 2.0;
-
-    float tf = 0;
-    bool ballFlying = false;
-
-    //Golfer Position
-    Vector2 golferPosition = { ballPosition.x - 234, ballPosition.y + 19 };
-
-    hitType currentHit = hitType::Idle;
-
-
-    //Course
-    float mapScale = 1.814f;
-    Texture2D hole1 = LoadTexture("resources/hole1WilliamsCreek.png");
-    
+    // Camera
     Camera2D camera = { 0 };
     camera.target = { 354, 830 };
-    camera.offset = { screenWidth/2, 800 };
+    camera.offset = { screenWidth / 2.0f, 800 };
     camera.rotation = 0.0f;
     camera.zoom = 2.2f;
-    
-    int strokeCounter = 1;
 
-    int hole1Dist = 166;
-	int hole2Dist = 255;
-	int hole3Dist = 300;        //Fix this lol//
-	int hole4Dist = 400;
-	int hole5Dist = 500;
-	int hole6Dist = 600;
-	int hole7Dist = 700;
-	int hole8Dist = 800;
-	int hole9Dist = 900;
-
-	Vector2 hole1Pin = { 343, 109 };
-
-
-
-    SetTargetFPS(60);
-//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
-//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
     while (!WindowShouldClose())
     {
+        float GFT = GetFrameTime();
         Vector2 mousePos = GetMousePosition();
-        if (currentScreen == gameScreen::mainMenu) {
-            if (CheckCollisionPointRec(mousePos, playButton) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+
+        // Main Menu
+        if (currentScreen == gameScreen::mainMenu)
+        {
+            if (CheckCollisionPointRec(mousePos, playButton) &&
+                IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+            {
                 currentScreen = gameScreen::holeIntro;
                 introStartTime = GetTime();
             }
-			
-            if (CheckCollisionPointRec(mousePos, optionsButton) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+
+            if (CheckCollisionPointRec(mousePos, optionsButton) &&
+                IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+            {
                 currentScreen = gameScreen::options;
             }
 
-            if (CheckCollisionPointRec(mousePos, quitButton) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            if (CheckCollisionPointRec(mousePos, quitButton) &&
+                IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+            {
                 break;
             }
         }
-        if (currentScreen == gameScreen::holeIntro && GetTime() - introStartTime >= 4.5) {
+
+        // Hole Introduction
+        if (currentScreen == gameScreen::holeIntro &&
+            GetTime() - introStartTime >= 4.5)
+        {
             currentScreen = gameScreen::playing;
         }
 
-        if (IsKeyPressed(KEY_ESCAPE) && currentScreen != gameScreen::mainMenu) {
+        // Escape to Main Menu
+        if (IsKeyPressed(KEY_ESCAPE) &&
+            currentScreen != gameScreen::mainMenu)
+        {
             currentScreen = gameScreen::mainMenu;
         }
 
-        //Scoring Mechanics
-        if (currentScreen == gameScreen::playing) {
-            if (holeNum == 1 && CheckCollisionCircles(ballPosition, ballSize, hole1Pin, 5.0f)) {
-				currentScreen = gameScreen::scoring;
-				introStartTime = GetTime();
-            }
-        }
-        if (currentScreen == gameScreen::scoring && GetTime() - introStartTime >= 4.5) {
-            currentScreen = gameScreen::playing;
-            holeNum++;
-        }
-
-        // Golfer Animation
-        float scale = mapScale*.1378f;
-
-        Rectangle sourceRect = {
-            0.0f,
-            0.0f,
-            frameWidth,
-            frameHeight
-        };
-
-        Rectangle destRect = {
-            (float)golferPosition.x, (float)golferPosition.y,
-            frameWidth * scale,
-            frameHeight * scale
-        };
-
-        Vector2 origin = {
-            (frameWidth * scale) / 2.0f,
-            (frameHeight / 2) * 2.0f
-        };
-
-        int column = currentFrame % framesPerRow;
-        int row = currentFrame / framesPerRow;
-
-        sourceRect.x = (float)column * frameWidth;
-        sourceRect.y = (float)row * frameHeight;
-
-
-        //Golf Swing Mechanics
-        float GFT = GetFrameTime();
-
-        if (IsKeyDown(KEY_SPACE) &&
-            swingState == swingState::Idle &&
-            !ballFlying)
+        // Gameplay Updates
+        if (currentScreen == gameScreen::playing)
         {
-            swingState = swingState::Backswing;
+            UpdateSwing(
+                swing,
+                ball.flying,
+                course.strokeCounter,
+                ball.flightTime,
+                GFT
+            );
 
-            currentFrame = 0;
-            runningTime = 0.0f;
-            startTime = GetTime();
-        }
+            UpdateBallPhysics(ball, swing, GFT);
+            UpdateAim(ball, GFT);
 
-        if (IsKeyReleased(KEY_SPACE) &&
-            swingState == swingState::Backswing)
-        {
-            swingState = swingState::Downswing;
-
-            currentFrame = 20;
-            runningTime = 0.0f;
-            holdTime = GetTime() - startTime;
-            strokeCounter++;
-
-            if (holdTime > maxTime)
+            // Camera Mechanics
+            if (ball.flying)
             {
-                int outcome = GetRandomValue(1, 2);
-
-                if (outcome == 1)
-                {
-                    currentHit = hitType::Hook;
-                }
-                else
-                {
-                    currentHit = hitType::Slice;
-                }
+                camera.target = ball.position;
             }
-            else if (holdTime < minTime)
+
+            float mapWidth =
+                assets.hole1.width * course.mapScale;
+
+            float mapHeight =
+                assets.hole1.height * course.mapScale;
+
+            float leftLimit =
+                camera.offset.x / camera.zoom;
+
+            float rightLimit =
+                mapWidth -
+                (screenWidth - camera.offset.x) / camera.zoom;
+
+            float topLimit =
+                camera.offset.y / camera.zoom;
+
+            float bottomLimit =
+                mapHeight -
+                (screenHeight - camera.offset.y) / camera.zoom;
+
+            camera.target.x = Clamp(
+                camera.target.x, leftLimit, rightLimit
+            );
+
+            camera.target.y = Clamp(
+                camera.target.y, topLimit, bottomLimit
+            );
+
+            // Scoring Mechanics
+            if (CheckHoleComplete(course, ball))
             {
-                currentHit = hitType::Weak;
+                currentScreen = gameScreen::scoring;
+                introStartTime = GetTime();
             }
-            else
-            {
-                currentHit = hitType::Pure;
-            }
-
-            tf = 0.0f;
         }
 
-
-        if (swingState == swingState::Backswing ||
-            swingState == swingState::Downswing)
+        // Scoring Screen Transition
+        if (currentScreen == gameScreen::scoring &&
+            GetTime() - introStartTime >= 4.5)
         {
-            runningTime += GFT;
-
-            if (runningTime >= updateTime)
-            {
-                runningTime -= updateTime;
-
-                if (swingState == swingState::Backswing)
-                {
-                    if (currentFrame < 19)
-                    {
-                        currentFrame++;
-                    }
-                }
-                else if (swingState == swingState::Downswing)
-                {
-                    if (currentFrame < 34)
-                    {
-                        currentFrame++;
-                    }
-                    else
-                    {
-                        swingState = swingState::Idle;
-                        currentFrame = 0;
-
-                    }
-                }
-            }
-        }
-        
-        
-
-        // Swing Meter Stuff
-        float growth = GFT * rotationSpeed;
-
-        if (swingState == swingState::Backswing)
-        {
-            swingMeter.y -= growth;
-            swingDuration.y += growth;
-        }
-        else if (!IsKeyPressed(KEY_SPACE))
-        {
-            swingMeter.y += 3 * growth;
-            swingDuration.y -= 3 * growth;
+            // Keep the current hole until the next hole
+            // has its own texture and starting position.
+            currentScreen = gameScreen::mainMenu;
         }
 
-        swingDuration.y = Clamp(swingDuration.y, 0.0f, 120.0f);
-        swingMeter.y = Clamp(swingMeter.y, 670.0f, 790.0f);
-
-        // Ball Physics + Club Selection Stuff
-        //Looking at 0.23 yards per pixel//
-
-        if (swingState == swingState::Downswing &&
-            currentFrame == 28 &&
-            !ballFlying) {
-            ballFlying = true;
-            tf = 0.0f;
-
-			float radians = aimAngle * DEG2RAD;
-
-			ballDirection.x = cosf(radians);
-			ballDirection.y = sinf(radians);
-        }
-        if (ballFlying == true) {
-            tf += GFT;
-
-            if (tf >= 8.0f) {
-                ballFlying = false;
-            }
-        }
-        if (ballFlying && tf < 8.0f) {
-
-            float strength = 0;
-
-            if (currentHit == hitType::Weak) {
-                strength = .7f;
-            }
-            else if (currentHit == hitType::Pure) {
-                strength = 1.0f;
-            }
-            else if (currentHit == hitType::Slice) {
-                strength = .89f;
-            }
-            else if (currentHit == hitType::Hook) {
-                strength = .89f;
-            }
-
-            ballPosition.x += ballDirection.x * strength * GFT;
-            ballPosition.y += ballDirection.y * strength * GFT;
-            
-            //Distance per frame = speed x frametime.
-        }
-		
-        // Aim Line Mechanics
-        if (IsKeyDown(KEY_D)) {
-            aimAngle += 90.0f * GetFrameTime();
-        }
-
-        if (IsKeyDown(KEY_A)) {
-            aimAngle -= 90.0f * GetFrameTime();
-        }
-
-        float radians = aimAngle * DEG2RAD;
-
-        aimLineEnd.x = aimLineStart.x + cosf(radians) * aimLength;
-        aimLineEnd.y = aimLineStart.y + sinf(radians) * aimLength;
-
-        if (!ballFlying) {
-            aimLineStart = ballPosition;
-        }
-
-		//Camera Mechanics
-        if (ballFlying == true) {
-            camera.target = ballPosition;
-        }
-        float mapX = 0.0f;
-        float mapY = 0.0f;
-        float mapWidth = hole1.width * mapScale;
-        float mapHeight = hole1.height * mapScale;
-
-        float leftLimit = mapX + camera.offset.x / camera.zoom;
-        float rightLimit = mapX + mapWidth -
-            (screenWidth - camera.offset.x) / camera.zoom;
-
-        float topLimit = mapY + camera.offset.y / camera.zoom;
-        float bottomLimit = mapY + mapHeight -
-            (screenHeight - camera.offset.y) / camera.zoom;
-
-        camera.target.x = Clamp(camera.target.x, leftLimit, rightLimit);
-        camera.target.y = Clamp(camera.target.y, topLimit, bottomLimit);
-
-
-        const char* hitText = "Idle";
-        
-
-        switch (currentHit)
-        {
-        case hitType::Weak:
-            hitText = "Weak";
-            break;
-
-        case hitType::Slice:
-            hitText = "Slice";
-            break;
-
-        case hitType::Hook:
-            hitText = "Hook";
-            break;
-
-        case hitType::Pure:
-            hitText = "Pure";
-            break;
-
-        case hitType::Idle:
-            hitText = "Idle";
-            break;
-        }
-        if (ballFlying == false) {
-            golferPosition = { ballPosition.x - 246, ballPosition.y + 9 };
-        }
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
-
+        // Drawing
         BeginDrawing();
         ClearBackground(DARKGREEN);
 
-        if (currentScreen == gameScreen::mainMenu) {
-            DrawText("GOLF SIMULATOR", 190, 200, 45, WHITE);
-
-            DrawRectangleRec(
+        if (currentScreen == gameScreen::mainMenu)
+        {
+            DrawMainMenu(
+                mousePos,
                 playButton,
-                CheckCollisionPointRec(mousePos, playButton) ? LIME : GREEN
-            );
-
-            DrawRectangleRec(
                 optionsButton,
-                CheckCollisionPointRec(mousePos, optionsButton) ? LIME : GREEN
+                quitButton
             );
-
-            DrawRectangleRec(
-                quitButton,
-                CheckCollisionPointRec(mousePos, quitButton) ? LIME : GREEN
-            );
-
-            DrawText("PLAY", 365, 365, 30, WHITE);
-            DrawText("OPTIONS", 330, 445, 30, WHITE);
-            DrawText("QUIT", 365, 525, 30, WHITE);
         }
-		else if (currentScreen == gameScreen::holeIntro) {
-			ClearBackground(BLACK);
-			if (holeNum == 1) {
-				DrawTextureEx(hole1, { 0, 0 }, 0.0f, mapScale, WHITE);
-				DrawText("HOLE 1", 330, 200, 40, BLACK);
-				DrawText("PAR 3", 330, 250, 30, BLACK);
-				DrawText("YARDS: 166", 300, 300, 30, BLACK);
-			}
-		}
-        else if (currentScreen == gameScreen::playing) {
-            if (holeNum == 1) {
-                DrawText("GOLF GAME", 280, 400, 40, WHITE);
-                DrawText("Press ESC for menu", 270, 460, 20, WHITE);
-                //Background + Course
-                //BeginMode2D(camera);
-
-                DrawTextureEx(
-                    hole1,
-                    { 0, 0 },
-                    0.0f,
-                    mapScale,
-                    WHITE);
-                // Golfer
-                DrawTexturePro(
-                    golfer,
-                    sourceRect,
-                    destRect,
-                    origin,
-                    90.0f,
-                    WHITE);
-
-                // Golf Ball
-                DrawCircleV(ballPosition, ballSize, WHITE);
-                
-                //Aim Line
-                if (!ballFlying) {
-                    DrawLineV(aimLineStart, aimLineEnd, WHITE);
-                }
-
-                //EndMode2D();
-
-                //Corner Map
-                DrawTextureEx(hole1, { 670, 50 }, 0, .115f, WHITE);
-                DrawRectangleLinesEx({ 670, 50, 100, 230.92 }, 2, BLACK);
-                DrawText("Hold M for Map", 650, 290, 18, BLACK);
-
-                if (IsKeyDown(KEY_M)) {
-                    ClearBackground(BLACK);
-                    DrawTextureEx(hole1, { 200, 0 }, 0, .5f, WHITE);
-                }
-                else {
-                    // Swing Meter
-                    Rectangle whiteMeter = { 550, 670 };
-                    DrawRectangle(
-                        whiteMeter.x, whiteMeter.y,
-                        28,
-                        120,
-                        WHITE
-                    );
-                    DrawRectangle(
-                        whiteMeter.x, whiteMeter.y + 34.5,
-                        28,
-                        27,
-                        GREEN);
-                    DrawRectangleV(
-                        swingMeter,
-                        swingDuration,
-                        RED);
-
-
-                    //Text With Time Callouts & Mouse Position
-                    DrawText(TextFormat("%.2f", holdTime), 0.6725 * screenWidth, .583 * screenHeight, 20, WHITE);
-                    DrawText(hitText, .6725 * screenWidth, .62 * screenHeight, 20, WHITE);
-                    DrawText(TextFormat("Mouse X: %.0f | Mouse Y: %.0f", mousePos.x, mousePos.y), 400, 550, 20, WHITE);
-                    DrawText(TextFormat("Stroke: %d", strokeCounter), 400, 530, 20, WHITE);
-                    DrawText(TextFormat("Is flying: %s", ballFlying ? "true" : "false"), 400, 510, 20, WHITE);
-                }
-            }
-            
-
-            //Course Details
-            Rectangle score =
-            { 10, 10, 180, 60 };
-            DrawRectangle(
-                10,
-                10,
-                180,
-                60,
-                WHITE
-            );
-            DrawRectangleLinesEx(
-                score,
-                2,
-                BLACK
-            );
-            DrawLineEx(
-                { 52, 40 },
-                { 52, 70 },
-                2,
-                BLACK
-            );
-            DrawLineEx(
-                { 100, 40 },
-                { 100, 70 },
-                2,
-                BLACK
-            );
-            DrawLineEx(
-                { 10, 40 },
-                { 190, 40 },
-                2,
-                BLACK
-            );
-            DrawText(       //ADD CODE TO KNOW WHICH HOLE YOU ARE ON//
-                "1",
-                25, 42,
-                30,
-                BLACK
-            );
-            DrawText(
-                "135",      //ADD CODE TO KNOW YARDS TO PIN//
-                56, 44,
-                25,
-                BLACK
-            );
-            DrawText(
-                "1 2 3 4",      //ADD CODE TO KNOW WHAT STROKE YOU ARE ON//
-                106, 44,
-                25,
-                BLACK
-            );
-            DrawText(
-                "SCORE: +5",      //ADD CODE TO KNOW SCORE//
-                20, 14,
-                25,
-                BLACK
-            );
-
+        else if (currentScreen == gameScreen::holeIntro)
+        {
+            DrawHoleIntro(assets, course);
         }
-        else if (currentScreen == gameScreen::options) {
-
-            DrawText("OPTIONS", 290, 400, 40, WHITE);
-            DrawText("Press ESC to return", 260, 460, 20, WHITE);
+        else if (currentScreen == gameScreen::playing)
+        {
+            DrawGameplay(
+                assets,
+                course,
+                swing,
+                ball,
+                camera,
+                mousePos
+            );
+        }
+        else if (currentScreen == gameScreen::scoring)
+        {
+            DrawScoring(course);
+        }
+        else if (currentScreen == gameScreen::options)
+        {
+            DrawOptions();
         }
 
-       
         EndDrawing();
     }
 
-
-    UnloadTexture(golfer);
-    UnloadTexture(hole1);
+    UnloadTexture(assets.golfer);
+    UnloadTexture(assets.hole1);
 
     CloseWindow();
 
     return 0;
 }
-
